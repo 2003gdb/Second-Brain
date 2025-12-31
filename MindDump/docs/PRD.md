@@ -89,24 +89,48 @@ The following features are visible in the UI but are **intentionally non-functio
 ### 3.1 Navigation Structure
 
 ```
-Notes List (Home)
-├── Note Detail
-│   └── Note Actions Menu (overlay)
-├── Settings
-│   └── Prioritize Notes View
-├── Blank Note Editor
-├── Tags Drawer (bottom sheet)
-└── Action Menu (FAB overlay)
-    ├── Dictate Sheet
-    └── Add Note Dialog
+Bottom Control Bar
+├── Notes List (Home)
+│   ├── Note Detail
+│   │   └── Note Actions Menu (overlay)
+│   ├── Blank Note Editor
+│   ├── Tags Drawer (bottom sheet)
+│   ├── Action Menu (FAB overlay)
+│   │   ├── Dictate Sheet
+│   │   └── Add Note Dialog
+│   └── Settings
+│
+└── Prioritize Notes View (Swipe Prioritization)
+    └── Settings
 ```
+
+**Bottom Control Bar:** Fixed navigation bar at bottom with two main pages:
+- Notes (list of all notes)
+- Prioritize (swipe-based prioritization interface)
 
 ### 3.2 Layout Specifications
 
+#### 3.2.0 Bottom Control Bar (Navigation)
+- **Position:** Fixed at bottom of screen above safe area
+- **Height:** 60pt (including padding)
+- **Background:** White with subtle top border
+- **Structure:** Two-tab navigation system
+  - Left tab: "Notes" with list icon
+  - Right tab: "Prioritize" with priority/zap icon
+- **Tab styling:**
+  - Active tab: Black text with bottom border indicator
+  - Inactive tab: Gray text
+  - Hover state: Slight color change on inactive tabs
+- **Navigation behavior:**
+  - Tapping a tab switches to that page
+  - Settings and note detail views overlay on top without hiding control bar
+  - Maintain active tab indicator when navigating within a page (e.g., viewing note detail from Notes tab)
+- **Mobile safe area:** Respects bottom safe area on devices with notch/home indicator
+
 #### 3.2.1 Notes List View
 - **Header:** Title ("All Notes" or selected tag) with dropdown indicator, Search icon, Settings icon
-- **Content:** Vertically scrolling list of note cards with bottom padding (24pt) for FAB
-- **FAB:** Black circular button (56pt diameter) with Plus icon, bottom-right corner
+- **Content:** Vertically scrolling list of note cards with bottom padding (80pt) for FAB and control bar
+- **FAB:** Black circular button (56pt diameter) with Plus icon, bottom-right corner (positioned above control bar)
 
 #### 3.2.2 Note Card
 - White rounded card (12pt radius)
@@ -160,14 +184,15 @@ Notes List (Home)
 - Selected tag highlighted (black background, white text)
 
 #### 3.2.10 Prioritize View
-- **Header:** Back button, "Prioritize Notes" label
+- **Header:** Back button (optional - can use control bar to return to Notes), "Prioritize Notes" label, Settings icon
 - **Progress:** Review count and progress bar
+- **Content Area:** Vertically centered with bottom padding (80pt) for control bar
 - **Card:** Large swipeable card showing note details
   - Background color indicates priority level
   - Date, title, tags, preview
 - **Swipe Indicators:** "PRIORITIZE" (green) / "IGNORE" (red) labels appear during swipe
 - **Action Buttons:** X (ignore) and Heart (prioritize) circular buttons
-- **Instructions:** Swipe guidance text at bottom
+- **Instructions:** Swipe guidance text above bottom control bar
 
 ### 3.3 Color System
 
@@ -241,6 +266,8 @@ Uses Lucide icon set:
 - Follow standard Apple-recommended patterns and Human Interface Guidelines
 - Use native iOS components where available (UIKit or SwiftUI based on team preference)
 - Local data persistence (no backend required for MVP)
+- Use concrete class dependency injection (avoid protocol boilerplate)
+- Implement design tokens FIRST before any UI work
 
 ### 4.3 Permissions Required
 
@@ -248,20 +275,6 @@ Uses Lucide icon set:
 |------------|---------|
 | Microphone | Voice dictation feature |
 
-### 4.4 Data Model
-
-```
-Note {
-  id: String (unique identifier)
-  title: String
-  content: String
-  tags: [String]
-  date: String (display format: "DD MMM")
-  lastModified: String (display format: "DD Month YYYY, HH:MM AM/PM")
-  promoted: Boolean
-  priority: Int (0-4: 0=none, 1=low, 2=medium, 3=high, 4=critical)
-}
-```
 
 ### 4.5 Local Storage
 
@@ -285,6 +298,9 @@ The mockup suggests potential AI integration in these areas (not implemented in 
 
 These are noted for future consideration only. No AI dependencies or implementation in MVP.
 
+### 4.8 Design System Setup
+
+Create `DesignSystem/Tokens/` (Colors.swift, Spacing.swift, Typography.swift) using values from Section 3.3-3.4 as first development task. Create `Preview_DesignSystem.swift` to visualize tokens during development. Never hard-code colors/spacing/fonts in views—only reference tokens.
 ---
 
 ## 5. Non-Goals
@@ -355,29 +371,53 @@ The following are observations and potential improvements for future versions, c
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         NOTES LIST                               │
+│                         MAIN APP                                 │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │ [Tag Dropdown ▼]              [Search] [Settings]        │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ Note Card 1  ←──── tap ────→  NOTE DETAIL               │   │
-│  │ Note Card 2                     │                        │   │
-│  │ Note Card 3                     ↓                        │   │
-│  │ ...                       [Note Actions Menu]            │   │
-│  └──────────────────────────────────────────────────────────┘   │
+│  │                      NOTES LIST                          │   │
+│  │  [Tag Dropdown ▼]         [Search] [Settings]           │   │
+│  │  ┌────────────────────────────────────────────────────┐ │   │
+│  │  │ Note Card 1  ←── tap ──→ NOTE DETAIL              │ │   │
+│  │  │ Note Card 2                │                       │ │   │
+│  │  │ Note Card 3                ↓                       │ │   │
+│  │  │ ...              [Note Actions Menu]               │ │   │
+│  │  └────────────────────────────────────────────────────┘ │   │
+│  │                                                          │   │
+│  │  [+ FAB] ──→ ACTION MENU                               │   │
+│  │               ├── Dictate ──→ DICTATE SHEET            │   │
+│  │               ├── Write ──→ BLANK NOTE EDITOR          │   │
+│  │               ├── Scan ──→ (placeholder)               │   │
+│  │               └── Transcribe ──→ (same as dictate)     │   │
+│  │                                                          │   │
+│  │  [Tag Dropdown] ──→ TAGS DRAWER                        │   │
+│  │                                                          │   │
+│  │  [Settings] ──→ SETTINGS VIEW                          │   │
+│  ├──────────────────────────────────────────────────────┤   │
+│  │ [📋 Notes] │ [⚡ Prioritize]  ← BOTTOM CONTROL BAR   │   │
+│  └──────────────────────────────────────────────────────┘   │
 │                                                                  │
-│  [+ FAB] ──→ ACTION MENU                                        │
-│                ├── Dictate ──→ DICTATE SHEET                    │
-│                ├── Write ──→ BLANK NOTE EDITOR                  │
-│                ├── Scan ──→ (placeholder)                       │
-│                └── Transcribe ──→ (same as dictate)             │
-│                                                                  │
-│  [Settings] ──→ SETTINGS VIEW                                   │
-│                   └── Prioritize Notes ──→ PRIORITIZE VIEW      │
-│                                                                  │
-│  [Tag Dropdown] ──→ TAGS DRAWER                                 │
+│  ┌──────────────────────────────────────────────────────┐   │   │
+│  │                  PRIORITIZE VIEW                     │   │   │
+│  │  Progress: 1/6  [████░░░░░░]                         │   │   │
+│  │                                                       │   │   │
+│  │           ┌──────────────────────┐                   │   │   │
+│  │           │  Exploration Ideas   │                   │   │   │
+│  │           │  20 APR              │                   │   │   │
+│  │           │  [Design] [Prod.]    │                   │   │   │
+│  │           │  Ticket App, Travel..│                   │   │   │
+│  │           └──────────────────────┘                   │   │   │
+│  │     [✕]              [❤]                            │   │   │
+│  │   Swipe left ← or → Swipe right                     │   │   │
+│  ├──────────────────────────────────────────────────────┤   │   │
+│  │ [📋 Notes] │ [⚡ Prioritize]  ← BOTTOM CONTROL BAR   │   │   │
+│  └──────────────────────────────────────────────────────┘   │   │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Bottom Control Bar Navigation:**
+- Left tab: "Notes" - Navigate to notes list
+- Right tab: "Prioritize" - Navigate to swipe-based prioritization
+- Always visible to enable quick switching between pages
+- Active tab shows with black text and bottom border indicator
 
 ---
 
@@ -385,6 +425,7 @@ The following are observations and potential improvements for future versions, c
 
 | Component | Type | Instances |
 |-----------|------|-----------|
+| Bottom Control Bar | Navigation | Global (all main views) |
 | Note Card | List Item | Notes List |
 | Badge | Tag | Note cards, Note detail, Prioritize cards |
 | FAB | Button | Notes List, Note Detail |
