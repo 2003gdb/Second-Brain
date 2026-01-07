@@ -344,3 +344,364 @@ Toda entrada por widget se trata como **una nota normal**.
 ---
 
 *Este PRD define el sistema mínimo coherente para construir MindDump sin contradicciones ni deuda conceptual temprana.*
+
+---
+
+## 9. Especificaciones Técnicas de Implementación
+
+### 9.1 Frontend (iOS - Swift)
+
+**Arquitectura:**
+- MVVM con @Observable (iOS 17+)
+- Feature-based folder structure
+- SwiftData para persistencia local (transición a API backend)
+- NavigationStack con typed routes
+
+**Frameworks clave:**
+- SwiftUI (UI declarativa)
+- SwiftData (persistencia local)
+- Speech Framework (dictado on-device)
+- Combine (reactive programming)
+
+**Dependencias externas:**
+- Ninguna por defecto (opcionalmente WhisperKit para mejor transcripción)
+
+---
+
+### 9.2 Backend (Pendiente)
+
+**Stack recomendado:**
+- Python (FastAPI) o Node.js (Express/NestJS)
+- PostgreSQL (base de datos principal)
+- Redis (cache y rate limiting)
+- Vector DB (Pinecone/Qdrant para semantic search)
+- Object Storage (S3/CloudFlare R2 para pinturas)
+
+**Servicios de AI:**
+- OpenAI GPT-4 (extracción de conceptos, clasificación de intenciones)
+- OpenAI Embeddings (semantic search)
+- Whisper API (transcripción de voz - fallback cloud)
+- DALL-E o Stable Diffusion (generación de pinturas)
+
+**Infraestructura:**
+- Serverless functions para procesamiento asíncrono
+- Message Queue (RabbitMQ/SQS) para pipeline de procesamiento
+- CDN para servir pinturas
+
+---
+
+### 9.3 Pipeline de Procesamiento (Backend)
+
+**Flujo cuando se crea/edita una nota:**
+
+```
+1. Usuario crea/edita nota
+   ↓
+2. Frontend guarda en SwiftData (offline-first)
+   ↓
+3. Frontend envía a backend API
+   ↓
+4. Backend guarda nota en PostgreSQL
+   ↓
+5. Backend encola job de procesamiento
+   ↓
+6. Worker procesa en background:
+   a. Extracción de conceptos (GPT-4)
+   b. Clasificación de intención (GPT-4)
+   c. Extracción de to-dos (GPT-4)
+   d. Generación de embedding (OpenAI Embeddings)
+   e. Generación de resumen (GPT-4)
+   ↓
+7. Worker actualiza nota con datos procesados
+   ↓
+8. Frontend recibe notificación (polling o webhook)
+   ↓
+9. Frontend sincroniza y actualiza UI
+```
+
+**Tiempo estimado de procesamiento:** 5-15 segundos por nota
+
+---
+
+### 9.4 Base de Datos (Schema Principal)
+
+**Tablas PostgreSQL:**
+
+```sql
+-- Usuarios
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255), -- NULL si Google OAuth
+    name VARCHAR(255),
+    picture_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    last_login TIMESTAMP
+);
+
+-- Notas
+CREATE TABLE notes (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    title VARCHAR(500),
+    original_text TEXT NOT NULL,
+    processed_data JSONB, -- summary, key_points, sentiment, entities
+    language VARCHAR(10) DEFAULT 'en',
+    priority INTEGER DEFAULT 0,
+    word_count INTEGER,
+    status_id UUID REFERENCES statuses(id),
+    embedding VECTOR(1536), -- Para semantic search
+    painting_url TEXT,
+    creation_date TIMESTAMP DEFAULT NOW(),
+    last_update TIMESTAMP DEFAULT NOW(),
+    last_open TIMESTAMP
+);
+
+-- Conceptos (generados automáticamente)
+CREATE TABLE key_concepts (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    concept_text VARCHAR(255) NOT NULL,
+    normalized_name VARCHAR(255) NOT NULL,
+    weight FLOAT DEFAULT 0.0,
+    painting_url TEXT,
+    creation_date TIMESTAMP DEFAULT NOW(),
+    last_update TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, normalized_name)
+);
+
+-- Relación Notes ↔ Concepts (many-to-many)
+CREATE TABLE note_concepts (
+    note_id UUID REFERENCES notes(id) ON DELETE CASCADE,
+    concept_id UUID REFERENCES key_concepts(id) ON DELETE CASCADE,
+    weight FLOAT DEFAULT 0.0,
+    PRIMARY KEY (note_id, concept_id)
+);
+
+-- Intenciones (catálogo predefinido)
+CREATE TABLE purposes (
+    id UUID PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL, -- "Acción", "Aprender", etc.
+    description TEXT
+);
+
+-- Relación Notes ↔ Purposes (many-to-many con peso)
+CREATE TABLE note_purposes (
+    id UUID PRIMARY KEY,
+    note_id UUID REFERENCES notes(id) ON DELETE CASCADE,
+    purpose_id UUID REFERENCES purposes(id),
+    weight INTEGER DEFAULT 0
+);
+
+-- To-dos (extraídos de notas)
+CREATE TABLE todos (
+    id UUID PRIMARY KEY,
+    note_id UUID REFERENCES notes(id) ON DELETE CASCADE,
+    text VARCHAR(500) NOT NULL,
+    is_completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    completed_at TIMESTAMP
+);
+
+-- Estados de nota
+CREATE TABLE statuses (
+    id UUID PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL, -- "active", "archived", "deleted"
+    description TEXT
+);
+
+-- Configuración de usuario
+CREATE TABLE user_settings (
+    id UUID PRIMARY KEY,
+    user_id UUID UNIQUE REFERENCES users(id),
+    language VARCHAR(10) DEFAULT 'en',
+    auto_structure_note BOOLEAN DEFAULT TRUE,
+    painting_style_preference VARCHAR(50) DEFAULT 'impressionist',
+    auto_generate_paintings BOOLEAN DEFAULT TRUE,
+    theme VARCHAR(20) DEFAULT 'light',
+    creation_date TIMESTAMP DEFAULT NOW(),
+    last_update TIMESTAMP DEFAULT NOW()
+);
+
+-- Pinturas (tracking)
+CREATE TABLE paintings (
+    id UUID PRIMARY KEY,
+    entity_type VARCHAR(20) NOT NULL, -- "note" or "concept"
+    entity_id UUID NOT NULL,
+    url TEXT NOT NULL,
+    source VARCHAR(20) DEFAULT 'generated', -- "generated", "manual", "uploaded"
+    style VARCHAR(50),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Índices para performance
+CREATE INDEX idx_notes_user_id ON notes(user_id);
+CREATE INDEX idx_notes_status_id ON notes(status_id);
+CREATE INDEX idx_notes_embedding ON notes USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX idx_key_concepts_user_id ON key_concepts(user_id);
+CREATE INDEX idx_todos_note_id ON todos(note_id);
+CREATE INDEX idx_todos_is_completed ON todos(is_completed);
+```
+
+---
+
+### 9.5 Autenticación y Seguridad
+
+**Métodos de autenticación:**
+1. Email/Password (bcrypt para hashing)
+2. Google OAuth 2.0
+
+**Tokens:**
+- JWT para access tokens (expira en 1 hora)
+- Refresh tokens (expira en 30 días, stored en DB)
+- Storage: Keychain en iOS, httpOnly cookies en web
+
+**Seguridad:**
+- HTTPS obligatorio en producción
+- Rate limiting (100 req/min por usuario)
+- Input validation en todos los endpoints
+- SQL injection protection (prepared statements)
+- XSS protection (sanitización de HTML)
+
+---
+
+### 9.6 Búsqueda
+
+**Dos modos:**
+
+**1. Text Search (rápido, exacto)**
+- PostgreSQL full-text search
+- Indexa `title` y `original_text`
+- Soporta operadores AND, OR, NOT
+- Response time: < 100ms
+
+**2. Semantic Search (inteligente, conceptual)**
+- Vector similarity search con embeddings
+- Usa pgvector extension en PostgreSQL
+- Encuentra notas conceptualmente similares
+- Response time: < 500ms
+
+**Ejemplo:**
+```
+Query: "ideas de proyectos"
+
+Text Search → Notas que contengan literalmente "ideas" y "proyectos"
+Semantic Search → Notas sobre "brainstorming", "planificación", "desarrollo"
+```
+
+---
+
+### 9.7 Exportación de Datos
+
+**Formatos soportados:**
+- **JSON**: Estructura completa con metadatos
+- **Markdown**: Notas en formato legible
+- **TXT**: Texto plano simple
+
+**Alcance:**
+- Exportar todas las notas
+- Exportar notas de un concepto específico
+- Exportar notas con una intención específica
+
+**Implementación:**
+- Generación server-side
+- Descarga directa (no email)
+- Límite de tamaño: 50MB por exportación
+
+---
+
+### 9.8 Widgets (iOS)
+
+**Widget de Creación Rápida:**
+- Tamaños: small, medium
+- Funcionalidad: Tap para crear nota
+- Deep link a `BlankNoteEditorView`
+
+**Widget de Última Nota:**
+- Tamaño: small
+- Muestra título de última nota editada
+- Tap para abrir detalle
+
+**Widget de To-dos Pendientes:**
+- Tamaño: medium, large
+- Lista de to-dos no completados (max 5)
+- Tap en to-do marca como completado
+- Tap fuera abre TodosListView
+
+---
+
+### 9.9 Quick Actions (iOS)
+
+**Home Screen Quick Actions:**
+1. Nueva Nota de Texto
+2. Nueva Nota de Voz
+3. Ver To-dos
+4. Buscar Notas
+
+Implementación: `UIApplicationShortcutItem` en Info.plist
+
+---
+
+### 9.10 Offline-First Strategy
+
+**Sincronización:**
+- CRUD local en SwiftData (siempre funciona offline)
+- Cola de operaciones pendientes
+- Sincronización automática al recuperar conexión
+- Conflictos: última modificación gana (timestamp)
+
+**Indicadores UI:**
+- Badge en notas no sincronizadas
+- Banner de "No hay conexión"
+- Estado de sync en settings
+
+---
+
+### 9.11 Límites y Restricciones
+
+**Por usuario:**
+- Notas: ilimitadas
+- Conceptos generados: ilimitados
+- To-dos: ilimitados
+- Audio: max 25MB por archivo
+- Imágenes: max 5MB por archivo
+- Almacenamiento total: 1GB (gratis), 10GB (premium)
+
+**Rate Limits (API):**
+- Autenticación: 10 req/min
+- CRUD notas: 100 req/min
+- Uploads: 20 req/hora
+- Generación de pinturas: 10 req/hora
+
+---
+
+### 9.12 Roadmap de Features Post-MVP
+
+**v1.1 - Edición Rica:**
+- Markdown support
+- Headers, listas, énfasis
+- Bloques estructurados
+
+**v1.2 - Colaboración:**
+- Compartir notas (read-only links)
+- Workspaces compartidos
+- Comentarios en notas
+
+**v1.3 - AI Avanzada:**
+- Chat con tus notas (Q&A)
+- Sugerencias de conceptos relacionados
+- Auto-completado inteligente
+
+**v1.4 - Integraciones:**
+- Importar desde Notion, Evernote
+- Exportar a Google Docs
+- API pública para third-party
+
+**v1.5 - Multi-plataforma:**
+- macOS app (Catalyst)
+- Web app (React)
+- Android app (Kotlin)
+
+---
+
+*Última actualización: 2026-01-06*

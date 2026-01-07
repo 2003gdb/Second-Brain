@@ -30,7 +30,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		69A0B5DD2EF0700000A9FD3B /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		69A0B5DD2EF0700000A9FD3B /* Exceptions for "MindDump" folder in "MindDump" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -43,7 +43,7 @@
 		69A0B53C2EF06FEF00A9FD3B /* MindDump */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				69A0B5DD2EF0700000A9FD3B /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+				69A0B5DD2EF0700000A9FD3B /* Exceptions for "MindDump" folder in "MindDump" target */,
 			);
 			path = MindDump;
 			sourceTree = "<group>";

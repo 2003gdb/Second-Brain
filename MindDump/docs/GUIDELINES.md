@@ -50,6 +50,8 @@ After creating a new Model, document it in `MODEL_INVENTORY.md`:
 - **How**: One concise sentence explaining what data it represents (not how)
 - **Why**: Avoid duplicating data structures and understand model relationships across features
 
+**Important**: Never use "Folder" terminology. Use "Concept" instead for semantic groupings.
+
 **Networking Documentation:**
 After creating API clients, endpoints, or networking utilities, document them in `NETWORKING_INVENTORY.md`:
 - **When**: Immediately after completing implementation
@@ -140,10 +142,12 @@ NavigationStack(path: $path) {
 
 ## Data & Persistence
 
-- **SwiftData** for notes and structured data
+- **SwiftData** for notes, concepts, purposes, and structured data (currently)
+- **API Backend** for production (PostgreSQL - pending implementation)
 - **UserDefaults/@AppStorage** for simple preferences (theme, sort order)
 - **Keychain** for API tokens and sensitive credentials (NEVER UserDefaults)
 - **File System** for large attachments (audio, images)
+- **NSCache** for temporary data (rendered markdown, thumbnails)
 
 ---
 
@@ -230,3 +234,261 @@ enum MindDumpError: LocalizedError {
 - **Portrait orientation only**
 - **iOS 17+ minimum** (enables @Observable, SwiftData, modern navigation)
 - **Maximum file size: 350 lines** (split components if approaching this limit)
+
+---
+
+## Terminology Standards
+
+**ALWAYS use these terms consistently:**
+
+| Correct Term | NEVER Use | Context |
+|--------------|-----------|---------|
+| **Concepto** / **Concept** | Folder, Category, Tag | Semantic groupings extracted from notes |
+| **Intención** / **Purpose** | Goal, Type, Category | Cognitive intention (Acción, Aprender, etc.) |
+| **To-do** | Task, Action Item | Actionable items extracted from notes |
+| **Nota** / **Note** | Document, Entry, Item | Main content unit |
+| **Pintura** / **Painting** | Image, Picture, Photo | Impressionist-style backgrounds |
+| **Procesamiento** / **Processing** | Analysis, Parsing | AI/NLP extraction pipeline |
+
+---
+
+## Backend Integration (Pending)
+
+### Current State: Mock Data
+- All data lives in SwiftData locally
+- No backend connection
+- `ProcessedData` is always `null`
+- No automatic concept/purpose/todo extraction
+
+### Future State: API Backend
+When backend is ready:
+1. Migrate `NoteRepository`, `ConceptRepository`, etc. to API calls
+2. Keep SwiftData for offline-first caching
+3. Implement sync logic (optimistic updates)
+4. Handle processing status polling
+5. Manage auth tokens in Keychain
+
+### Repository Pattern for Migration
+```swift
+protocol NoteRepository {
+    func fetchNotes() async throws -> [Note]
+    func createNote(_ note: Note) async throws -> Note
+    // ...
+}
+
+// Current: SwiftData
+class SwiftDataNoteRepository: NoteRepository { ... }
+
+// Future: API + SwiftData cache
+class APIBacnoteRepository: NoteRepository {
+    private let apiClient: APIClient
+    private let localStore: ModelContext
+
+    func fetchNotes() async throws -> [Note] {
+        // Try API first, fallback to local, sync in background
+    }
+}
+```
+
+---
+
+## Feature Flags
+
+Use compile-time flags for unfinished features:
+
+```swift
+struct FeatureFlags {
+    static let enableConceptsView = false
+    static let enablePurposesView = false
+    static let enableTodosView = false
+    static let enableVoiceInput = false
+    static let enableSearch = false
+    static let enableBackend = false // Switch when API ready
+}
+```
+
+---
+
+## Processing Pipeline (Backend Only)
+
+When a note is created/edited, backend will:
+
+1. **Transcription** (if voice input)
+2. **Concept Extraction** → Updates `Note.concepts`
+3. **Purpose Classification** → Updates `Note.purposes`
+4. **Todo Extraction** → Creates `Todo` entities
+5. **Embedding Generation** → For semantic search
+6. **Summary Generation** → Updates `ProcessedData.summary`
+
+Frontend should:
+- Poll `/notes/{id}/processing` for status
+- Show loading state while `is_processing == true`
+- Refresh note when processing completes
+
+---
+
+## AI Services Architecture
+
+### Voice Transcription
+```swift
+protocol TranscriptionService {
+    func transcribe(audio: Data, language: String) async throws -> String
+}
+
+// MVP: On-device (Apple Speech Framework)
+class OnDeviceTranscriptionService: TranscriptionService { ... }
+
+// Fallback: Cloud (Whisper API)
+class CloudTranscriptionService: TranscriptionService { ... }
+```
+
+### Concept Extraction (Backend Only)
+- Uses NLP/LLM to extract key concepts
+- Returns weighted list of concepts
+- Creates new `KeyConcept` if doesn't exist
+- Updates concept weights based on usage
+
+### Purpose Classification (Backend Only)
+- Classifies note into 1+ predefined purposes
+- Returns purpose with confidence weight
+- System-defined purposes (not user-editable)
+
+### Todo Extraction (Backend Only)
+- Detects actionable items in text
+- Creates `Todo` entities linked to note
+- User can mark as completed (doesn't edit note)
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+- Test ViewModels (business logic)
+- Test Services (CRUD operations)
+- Test Mappers (DTO ↔ Model conversion)
+
+### Integration Tests
+- Test Repository implementations
+- Test API client with mock responses
+- Test sync logic
+
+### UI Tests
+- Critical user flows only
+- Note creation → view → edit
+- Auth flow
+- Search
+
+---
+
+## Performance Budgets
+
+### Memory
+- **Note List**: Max 150MB for 1000 notes
+- **Image Cache**: Max 50MB
+- **Audio Recording**: Stream, never load full file
+
+### Network
+- **API Response Time**: < 500ms for list endpoints
+- **Note Creation**: < 200ms (async processing)
+- **Image Upload**: < 2s for 5MB
+
+### Rendering
+- **List Scroll**: 60fps maintained
+- **Note Detail**: < 100ms to render
+- **Search Results**: < 300ms to display
+
+---
+
+## Security Guidelines
+
+### Authentication
+- Store JWT tokens in Keychain ONLY
+- Refresh tokens before expiry (proactive)
+- Clear tokens on logout
+- Never log tokens or sensitive data
+
+### Data Protection
+- Enable Data Protection entitlement
+- Mark sensitive files as protected
+- Use HTTPS for all network calls
+- Validate all API responses
+
+### Voice/Audio
+- Request microphone permission with clear explanation
+- Delete audio files after transcription
+- Never store raw audio permanently
+- Inform user about on-device vs cloud processing
+
+---
+
+## Accessibility Requirements
+
+### VoiceOver Support
+- All interactive elements have labels
+- Images have meaningful descriptions
+- Navigation is logical and predictable
+
+### Dynamic Type
+- All text respects user font size preferences
+- Layouts adapt to larger text
+- Minimum tap target: 44x44pt
+
+### Color Contrast
+- All text meets WCAG AA standards
+- Don't rely on color alone for information
+- Support dark mode
+
+---
+
+## Localization Preparation
+
+### String Management
+```swift
+// Use NSLocalizedString for all user-facing text
+Text(NSLocalizedString("notes.list.title", comment: "Notes list screen title"))
+
+// NOT
+Text("Notas") // ❌ Hardcoded
+```
+
+### Supported Languages (Future)
+- English (en)
+- Spanish (es)
+- Portuguese (pt)
+
+### Date/Number Formatting
+```swift
+// Always use locale-aware formatters
+let formatter = DateFormatter()
+formatter.dateStyle = .medium
+formatter.timeStyle = .short
+// formatter auto-adapts to user locale
+```
+
+---
+
+## Git Workflow
+
+### Branch Naming
+- `feature/concept-list-view`
+- `fix/note-delete-crash`
+- `refactor/repository-layer`
+- `docs/update-guidelines`
+
+### Commit Messages
+```
+feat: add Concepts list view with filtering
+fix: resolve crash when deleting note
+refactor: extract note card into component
+docs: update API endpoints documentation
+```
+
+### PR Requirements
+- Link to issue/task
+- Screenshots for UI changes
+- Update documentation if needed
+- No merge without review
+
+---
+
+**Last Updated**: 2026-01-06

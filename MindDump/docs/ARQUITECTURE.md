@@ -40,44 +40,153 @@ Feature-based organization keeps related code together and scales naturally as M
 MindDump/
 ├── App/
 │   ├── MindDumpApp.swift
-│   └── DependencyContainer.swift
+│   ├── MainTabView.swift
+│   ├── AppNavigation.swift
+│   └── ContentView.swift
 ├── Features/
 │   ├── Notes/
 │   │   ├── Views/
-│   │   │   ├── NoteListView.swift
+│   │   │   ├── NotesListView.swift
 │   │   │   ├── NoteDetailView.swift
-│   │   │   └── NoteEditorView.swift
+│   │   │   ├── BlankNoteEditorView.swift
+│   │   │   ├── NoteCard.swift
+│   │   │   ├── NoteActionsMenu.swift
+│   │   │   └── UIKit/
+│   │   │       ├── NotesTableViewController.swift
+│   │   │       ├── NotesTableViewRepresentable.swift
+│   │   │       └── NoteTableViewCell.swift
 │   │   ├── ViewModels/
-│   │   │   └── NoteListViewModel.swift
+│   │   │   └── NotesViewModel.swift
 │   │   └── Models/
-│   │       └── Note.swift
+│   │       ├── Note.swift
+│   │       ├── Purpose.swift
+│   │       ├── NotePurpose.swift
+│   │       └── Status.swift
+│   ├── Concepts/
+│   │   ├── Views/
+│   │   │   ├── ConceptsListView.swift (PENDIENTE)
+│   │   │   ├── ConceptDetailView.swift (PENDIENTE)
+│   │   │   └── ConceptCard.swift (PENDIENTE)
+│   │   └── ViewModels/
+│   │       └── ConceptsViewModel.swift (PENDIENTE)
+│   ├── Purposes/
+│   │   ├── Views/
+│   │   │   ├── PurposesListView.swift (PENDIENTE)
+│   │   │   └── PurposeDetailView.swift (PENDIENTE)
+│   │   └── ViewModels/
+│   │       └── PurposesViewModel.swift (PENDIENTE)
+│   ├── Todos/
+│   │   ├── Views/
+│   │   │   ├── TodosListView.swift (PENDIENTE)
+│   │   │   ├── TodoRow.swift (PENDIENTE)
+│   │   │   └── TodoDetailSheet.swift (PENDIENTE)
+│   │   └── ViewModels/
+│   │       └── TodosViewModel.swift (PENDIENTE)
 │   ├── VoiceInput/
 │   │   ├── Views/
-│   │   │   └── VoiceDictationView.swift
+│   │   │   └── DictateSheet.swift
 │   │   └── ViewModels/
 │   │       └── VoiceDictationViewModel.swift
-│   └── Tags/
-│       └── ...
+│   ├── Prioritize/
+│   │   ├── Views/
+│   │   │   ├── PrioritizeView.swift
+│   │   │   └── SwipeableCard.swift
+│   │   └── ViewModels/
+│   │       └── PrioritizeViewModel.swift
+│   ├── Settings/
+│   │   └── Views/
+│   │       └── SettingsView.swift
+│   ├── Auth/
+│   │   ├── Views/
+│   │   │   ├── OnboardingView.swift (PENDIENTE)
+│   │   │   ├── LoginView.swift (PENDIENTE)
+│   │   │   └── GoogleSignInButton.swift (PENDIENTE)
+│   │   └── ViewModels/
+│   │       └── AuthViewModel.swift (PENDIENTE)
+│   └── Search/
+│       ├── Views/
+│       │   ├── SearchBar.swift (PENDIENTE)
+│       │   └── SearchResultsView.swift (PENDIENTE)
+│       └── ViewModels/
+│           └── SearchViewModel.swift (PENDIENTE)
 ├── Core/
 │   ├── Services/
 │   │   ├── NoteService.swift
-│   │   └── TranscriptionService.swift
+│   │   ├── ConceptService.swift (PENDIENTE rename from FolderService)
+│   │   ├── TranscriptionService.swift
+│   │   ├── SampleDataService.swift
+│   │   ├── PaintingService.swift (PENDIENTE)
+│   │   ├── AuthService.swift (PENDIENTE)
+│   │   ├── SearchService.swift (PENDIENTE)
+│   │   ├── ExportService.swift (PENDIENTE)
+│   │   ├── ProcessingService.swift (PENDIENTE)
+│   │   ├── EmbeddingService.swift (PENDIENTE)
+│   │   └── StatsService.swift (PENDIENTE)
 │   ├── Repositories/
-│   │   └── NoteRepository.swift
-│   └── Networking/
-│       └── APIClient.swift
+│   │   ├── NoteRepository.swift
+│   │   ├── ConceptRepository.swift (PENDIENTE rename from FolderRepository)
+│   │   ├── PurposeRepository.swift (PENDIENTE)
+│   │   └── TodoRepository.swift (PENDIENTE)
+│   ├── Networking/
+│   │   ├── APIClient.swift
+│   │   ├── APIEndpoint.swift
+│   │   ├── APIError.swift
+│   │   ├── DTOs/
+│   │   │   ├── NoteDTO.swift
+│   │   │   ├── ConceptDTO.swift
+│   │   │   ├── PurposeDTO.swift (PENDIENTE)
+│   │   │   ├── TodoDTO.swift (PENDIENTE)
+│   │   │   ├── PaintingDTO.swift (PENDIENTE)
+│   │   │   ├── AuthResponseDTO.swift (PENDIENTE)
+│   │   │   ├── UserDTO.swift (PENDIENTE)
+│   │   │   ├── StatsDTO.swift (PENDIENTE)
+│   │   │   ├── SearchResultDTO.swift (PENDIENTE)
+│   │   │   ├── ProcessingStatusDTO.swift (PENDIENTE)
+│   │   │   ├── SettingsDTO.swift
+│   │   │   └── PaginatedResponse.swift
+│   │   └── Mappers/
+│   │       ├── NoteMapper.swift
+│   │       ├── ConceptMapper.swift
+│   │       ├── PurposeMapper.swift (PENDIENTE)
+│   │       ├── TodoMapper.swift (PENDIENTE)
+│   │       ├── UserMapper.swift (PENDIENTE)
+│   │       └── StatsMapper.swift (PENDIENTE)
+│   └── Models/
+│       ├── User.swift
+│       ├── UserSettings.swift
+│       ├── KeyConcept.swift
+│       ├── Todo.swift (PENDIENTE)
+│       ├── Painting.swift (PENDIENTE)
+│       ├── Stats.swift (PENDIENTE)
+│       └── SearchResult.swift (PENDIENTE)
 ├── Shared/
 │   ├── Components/
+│   │   ├── Badge.swift
+│   │   ├── CategoryBadge.swift
+│   │   ├── IconButton.swift
+│   │   ├── BottomSheet.swift
+│   │   ├── OverlayMenu.swift
+│   │   ├── FlowLayout.swift
+│   │   ├── FAB.swift
+│   │   └── FloatingActionMenu.swift
 │   ├── Extensions/
 │   └── Utilities/
 ├── DesignSystem/
 │   ├── Tokens/
 │   │   ├── Colors.swift
 │   │   ├── Typography.swift
+│   │   ├── FontRegistration.swift
 │   │   └── Spacing.swift
-│   └── Styles/
-│       └── ButtonStyles.swift
+│   ├── Styles/
+│   │   └── (Custom view modifiers y button styles)
+│   └── UIKit/
+│       ├── UIColor+DesignSystem.swift
+│       ├── UIFont+DesignSystem.swift
+│       └── UIEdgeInsets+Spacing.swift
 └── Resources/
+    ├── Fonts/
+    ├── Images/
+    └── Paintings/
 ```
 
 This structure separates concerns clearly: Features own UI and presentation logic, Core owns business logic and data access, Shared owns reusable utilities, and DesignSystem owns visual consistency.
